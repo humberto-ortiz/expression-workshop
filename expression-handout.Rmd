@@ -7,27 +7,71 @@ output: html_document
 
 ## Abstract
 
-The bioconductor project publishes software and data for the analysis of functional genomics experiments, using a variety of techniques such as microarrays or second-generation sequencing. 
+The bioconductor project publishes software and data for the analysis of functional genomics experiments, using a variety of techniques such as microarrays or second-generation sequencing. We will explore the bioconductor tools for expression analysis and pathway analysis and apply them to a demo dataset.
 
 ## Installing bioconductor
 
-```{r}
+Bioconductor comes with it's own installation procedures for software and data packages, the `biocLite()` function. You can use it to install any bioconductor package, along with all prerequisites. For example, to install the `limma` package, we can use code like this:
+
+```
 source("http://bioconductor.org/biocLite.R")
 biocLite("limma")
 ```
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Once you have sourced the biocLite file in your R session, you can continue to use it to install additional packages, such as the pathview package:
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```
+biocLite("pathview")
+```
+
+## Installing Data packages
+
+Bioconductor includes many experimental data packages as well, that can be installed with `biocLite()` function as well:
+
+```
+biocLite("breastCancerMAINZ")
+biocLite("hgu133a.db")
+```
+
+## Loading packages
+
+Once packages have been installed, you need to load the package into each session that will use them. R-Studio will keep the packages loaded into a workspace, even if you exit and restart the program, as long as you save your workspace.
 
 ```{r}
-summary(cars)
+library(Biobase)
+library(limma)
+library(breastCancerMAINZ)
+data(mainz)
 ```
 
-You can also embed plots, for example:
 
-```{r, echo=FALSE}
-plot(cars)
+## Getting help.
+
+bioconductor has extensive help available for almost all aspects.
+
+```{r}
+?mainz
+?ExpressionSet
+?limma
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Of particular note, are the package vignettes, pdf files with tutorial examples of almost all packages.
+
+## Examining the mainz breast cancer experiment
+
+http://cancerres.aacrjournals.org/content/68/13/5405.abstract
+
+```{r}
+dim(mainz)
+head(pData(mainz))
+pData(mainz)$e.dmfs
+# count patients with distant metastasis before 5 years
+sum(pData(mainz)$e.dmfs & pData(mainz)$t.dmfs < 1825)
+head(featureNames(mainz))
+annotation(mainz)
+```
+
+
+```{r}
+library(hgu133a.db)
+```
