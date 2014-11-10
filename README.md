@@ -19,7 +19,8 @@ Materials for UPR-CCC U54 bioconductor workshop
 ## Installation
 
 To prepare for the workshop, I recommend installing these packages in
-bioconductor. You will need a good Internet connection.
+bioconductor. You can cut and paste the following instructions into
+the RStudio console. You will need a good Internet connection.
 
 ```
 source("http://bioconductor.org/biocLite.R")
