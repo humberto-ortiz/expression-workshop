@@ -14,4 +14,18 @@ Materials for UPR-CCC U54 bioconductor workshop
  experiment
  1. Determine which pathways are altered in an experiment
  1. Prepare tables and plots to summarize the results of gene
-    expression experiments
+ expression experiments
+
+## Installation
+
+To prepare for the workshop, I recommend installing these packages in
+bioconductor. You will need a good Internet connection.
+
+```
+source("http://bioconductor.org/biocLite.R")
+biocLite("affy")
+biocLite("limma")
+biocLite("pathview")
+biocLite("breastCancerMAINZ")
+biocLite("hgu133a.db")
+```
