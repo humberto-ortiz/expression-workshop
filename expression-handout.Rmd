@@ -71,7 +71,110 @@ head(featureNames(mainz))
 annotation(mainz)
 ```
 
+## Plot some data from mainz
+
+```{r}
+row = 21399
+
+plot(exprs(mainz)[row,])
+mainz.class <- (pData(mainz)$e.dmfs & pData(mainz)$t.dmfs < 1825)
+mainz.fac <- factor(mainz.class, labels= c("CLEAR","DM"))
+stripchart(exprs(mainz)[row,] ~ mainz.fac, method="jitter")
+```
+
+## Plot all the genes
+
+Here's one of the 200 experiments.
+
+```{r}
+plotMA(mainz)
+```
+
+## Fitting a linear model
+
+Suppose we want to find genes that change expression between the cases that have distant metastases in under 5 years from those that don't. We can fit a model to the data if we label each column with the variable of interest.
+
+```{r}
+design <- model.matrix(~0 + mainz.fac)
+colnames(design) <- c("CLEAR", "DM")
+fit <- lmFit(exprs(mainz), design)
+cont.matrix <- makeContrasts(DMvsCLEAR = DM - CLEAR, levels = design)
+fit2 <- contrasts.fit(fit, cont.matrix)
+fit.b <- eBayes(fit2)
+```
+
+## Reporting the results
+
+The resulting `fit.b` object has the results of the linear model fit, and we can produce plots and table summarizing the evidence for differential expression between the conditions.
+
+The plot of the fit object shows the size of the predicted effect on each gene.
+
+```{r}
+plotMA(fit.b)
+```
+
+The volcanoplot shows the log odds of differential expression vs the log ratio of expression.
+
+```{r}
+volcanoplot(fit.b)
+```
+
+The topTable lists the genes ranked by the evidence of differential expression.
+
+```{r}
+topTable(fit.b, adjust = "BH")
+```
+
+## Mapping probe identifiers to external databases.
+
+We can use bioconductor annotation packages to find the ENTREZ Gene ID for the probes in our dataset.
 
 ```{r}
 library(hgu133a.db)
+ls("package:hgu133a.db")
 ```
+
+The package contains mappings from affy probe ids to many different databases. We're interested in the KEGG pathways:
+
+```{r}
+x <- hgu133aPATH2PROBE
+# Get the probe identifiers that are mapped to a KEGG pathway
+mapped_probes <- mappedkeys(x)
+# Convert to a list
+xx <- as.list(x[mapped_probes])
+
+indices <- ids2indices(xx, rownames(mainz))
+```
+
+Run `mroast` to find pathways with differential expression.
+
+```{r}
+res <- mroast(mainz, indices, design)
+head(res)
+res <- res[order(res$PValue.Mixed),]
+```
+
+To see the pathways we need a data matrix with ENTREZ Gene ID as the rowname
+
+```{r}
+x <- hgu133aENTREZID
+# Convert to a list
+xx <- as.list(x)
+entrezid <- sapply(rownames(fit.b), function(x) xx[x], USE.NAMES=FALSE)
+```
+
+Now we can plot the Kegg pathway and color the nodes by their fitted expression estimates.
+
+```{r}
+library(pathview)
+gene.data <- fit.b$coefficients
+rownames(gene.data) <- entrezid
+pv.out <- pathview(gene.data = gene.data, pathway.id = "04010", species = "hsa", out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
+
+pv.out <- pathview(gene.data = gene.data, pathway.id = "05200", species = "hsa", out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
+
+```
+
+![](hsa04010.dmvsclear.png)
+![](hsa05200.dmvsclear.png)
+
