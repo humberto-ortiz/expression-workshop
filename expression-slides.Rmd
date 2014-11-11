@@ -198,11 +198,9 @@ rownames(gene.data) <- entrezid
 ```{r}
 pv.out <- pathview(gene.data = gene.data, pathway.id = "04010", 
                    species = "hsa", out.suffix = "dmvsclear", 
-                   kegg.native = T, same.layer = F, res = 72)
+                   kegg.native = T, same.layer = F)
 ```
 
 ## Mapk Signalling
 
 ![](hsa04010.dmvsclear.png)
-***
-Pathway and expression data
