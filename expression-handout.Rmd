@@ -2,7 +2,11 @@
 title: "Expression Workshop"
 author: "Humberto Ortiz-Zuazaga"
 date: "November 14, 2014"
-output: html_document
+output: 
+  pdf_document:
+    includes:
+      in_header: mystyles.sty
+    keep_tex: yes
 ---
 
 ## Abstract
@@ -151,7 +155,6 @@ Run `mroast` to find pathways with differential expression.
 ```{r}
 res <- mroast(mainz, indices, design)
 head(res)
-res <- res[order(res$PValue.Mixed),]
 ```
 
 To see the pathways we need a data matrix with ENTREZ Gene ID as the rowname
@@ -169,12 +172,24 @@ Now we can plot the Kegg pathway and color the nodes by their fitted expression 
 library(pathview)
 gene.data <- fit.b$coefficients
 rownames(gene.data) <- entrezid
-pv.out <- pathview(gene.data = gene.data, pathway.id = "04010", species = "hsa", out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
+pv.out <- pathview(gene.data = gene.data, pathway.id = "04010", species = "hsa", 
+                   out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
 
-pv.out <- pathview(gene.data = gene.data, pathway.id = "05200", species = "hsa", out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
+pv.out <- pathview(gene.data = gene.data, pathway.id = "05200", species = "hsa", 
+                   out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
 
 ```
 
 ![](hsa04010.dmvsclear.png)
 ![](hsa05200.dmvsclear.png)
 
+## Bibliography
+
+```{r}
+citation()
+citation("breastCancerMAINZ")
+citation("hgu133a.db")
+citation("Biobase")
+citation("limma")
+citation("pathview")
+```
