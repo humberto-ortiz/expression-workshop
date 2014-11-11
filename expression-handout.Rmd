@@ -67,21 +67,23 @@ http://cancerres.aacrjournals.org/content/68/13/5405.abstract
 
 ```{r}
 dim(mainz)
-head(pData(mainz))
-pData(mainz)$e.dmfs
-# count patients with distant metastasis before 5 years
-sum(pData(mainz)$e.dmfs & pData(mainz)$t.dmfs < 1825)
-head(featureNames(mainz))
+colnames(pData(mainz))
 annotation(mainz)
 ```
 
 ## Plot some data from mainz
 
+I'll pick a row from the 22,000 probes in the arrays and plot the expression in each array for that gene.
+
 ```{r}
 row = 21399
-
 plot(exprs(mainz)[row,])
-mainz.class <- (pData(mainz)$e.dmfs & pData(mainz)$t.dmfs < 1825)
+```
+
+Let's divide the arrays into two groups, patients that developed distant metastases within 5 years of diagnosis and those that did not. We can then examine the expression of the selected gene in these groups.
+
+```{r}
+mainz.class <- (pData(mainz)$e.dmfs & pData(mainz)$t.dmfs < 5*365)
 mainz.fac <- factor(mainz.class, labels= c("CLEAR","DM"))
 stripchart(exprs(mainz)[row,] ~ mainz.fac, method="jitter")
 ```
@@ -96,7 +98,11 @@ plotMA(mainz)
 
 ## Fitting a linear model
 
-Suppose we want to find genes that change expression between the cases that have distant metastases in under 5 years from those that don't. We can fit a model to the data if we label each column with the variable of interest.
+Suppose we want to find genes that change expression between the cases that have distant metastases in under 5 years from those that don't. Instead of running t-tests on 22,000+ genes, we can fit a model to the data.
+
+The design matrix we use uses the factor we constructed above to divide the arrays into two groups. We can then construct a contrast matrix to compare expression in the patients with distant metastases to those that did not develop metastases.
+
+The `limma` User's Guide contains many case studies with different types of microarray experiments, it is very helpful when designing your own analyses.
 
 ```{r}
 design <- model.matrix(~0 + mainz.fac)
@@ -131,7 +137,7 @@ topTable(fit.b, adjust = "BH")
 
 ## Mapping probe identifiers to external databases.
 
-We can use bioconductor annotation packages to find the ENTREZ Gene ID for the probes in our dataset.
+We can use bioconductor annotation packages to find information for the probes in our dataset.
 
 ```{r}
 library(hgu133a.db)
@@ -150,7 +156,9 @@ xx <- as.list(x[mapped_probes])
 indices <- ids2indices(xx, rownames(mainz))
 ```
 
-Run `mroast` to find pathways with differential expression.
+The `mroast` function tests sets of genes for coordinated changes in expression.
+
+We can run `mroast` to find KEGG pathways with differential expression.
 
 ```{r}
 res <- mroast(mainz, indices, design)
