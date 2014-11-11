@@ -1,0 +1,208 @@
+---
+title: "Microarray data analysis using Bioconductor"
+author: "Humberto Ortiz-Zuazaga"
+date: "November 14, 2014"
+output: ioslides_presentation
+---
+
+## Bioconductor Project
+
+- Bioconductor: <http://bioconductor.org/>
+- 900+ packages for biostatistics
+- Developed by top biostatistics researchers
+- Extensive documentation: emphasizes reproducible research
+
+## Installation
+
+- Install R (I also recommend R Studio)
+- To install or upgrade bioconductor run:
+```
+source("http://bioconductor.org/biocLite.R")
+biocLite()
+```
+ you only need to run these commands once, not every session.
+ 
+## Installing Packages
+
+For this workshop we'll need several packages, not all are included in the basic bioconductor installation:
+```
+biocLite("limma")
+biocLite( "pathview")
+biocLite(c("breastCancerMAINZ", "hgu133a.db"))
+```
+
+## Loading Packages
+
+In each R session where you will work with bioconductor, you need to load the packages. I'll load in some publicly available data on breast cancer.
+
+```{r}
+library(breastCancerMAINZ)
+data(mainz)
+library(Biobase)
+```
+
+## Examining `mainz` Data
+
+The `mainz` experiment is described in <http://cancerres.aacrjournals.org/content/68/13/5405.abstract>
+
+```{r}
+dim(mainz)
+```
+it contains 200 arrays and measures 22,000+ genes.
+
+## Experimental Conditions
+
+Each array is labeled with phenotype data, in this case it includes many variables:
+
+```{r}
+colnames(pData(mainz))
+```
+
+## Plotting Array Data
+
+Here is the expression of one gene in all 200 arrays.
+
+```{r}
+row = 21399
+plot(exprs(mainz)[row,])
+```
+
+## Selecting Experiments
+
+Let's build a factor to separate the patients that developed distant metastases within 5 years.
+```{r}
+mainz.class <- (pData(mainz)$e.dmfs & pData(mainz)$t.dmfs < 5*365)
+mainz.fac <- factor(mainz.class, labels= c("CLEAR","DM"))
+sum(mainz.class)
+```
+
+## Detecting Differential Expression
+
+```{r}
+stripchart(exprs(mainz)[row,] ~ mainz.fac, method="jitter")
+```
+
+## The `limma` Package
+
+```{r}
+library(limma)
+?limma
+```
+
+## More genes
+
+Each array has 22,000+ genes.
+
+```{r}
+plotMA(mainz)
+```
+
+## Fitting a Linear Model
+
+Instead of running 22,000+ t-tests, we can fit a linear model. The `limma` User's Guide has many more examples.
+
+```{r}
+design <- model.matrix(~0 + mainz.fac)
+colnames(design) <- c("CLEAR", "DM")
+fit <- lmFit(exprs(mainz), design)
+cont.matrix <- makeContrasts(DMvsCLEAR = DM - CLEAR, levels = design)
+fit2 <- contrasts.fit(fit, cont.matrix)
+fit.b <- eBayes(fit2)
+```
+
+## Plotting the Model
+
+The plot of the fit object shows the size of the predicted effect on each gene.
+
+```{r}
+plotMA(fit.b)
+```
+
+## Volcano Plot
+
+The volcanoplot shows the log odds of differential expression vs the log ratio of expression.
+
+```{r}
+volcanoplot(fit.b)
+```
+
+## Listing Probe Sets
+
+The topTable lists the probe sets ranked by the strength of evidence for differential expression.
+
+```{r}
+topTable(fit.b, adjust = "BH")
+```
+
+## Mapping Probes to External Databases.
+
+We can use bioconductor annotation packages to find information for the probes in our dataset.
+
+```{r}
+library(hgu133a.db)
+```
+
+## Data in `hgu133a.db`
+
+```{r}
+ls("package:hgu133a.db")
+```
+
+## Querying KEGG
+
+```{r}
+x <- hgu133aPATH2PROBE
+# Get the probe identifiers that are mapped to a KEGG pathway
+mapped_probes <- mappedkeys(x)
+# Convert to a list
+xx <- as.list(x[mapped_probes])
+# build a list for mroast
+indices <- ids2indices(xx, rownames(mainz))
+```
+
+## `mroast`
+
+Run `mroast` to find pathways with differential expression.
+
+```{r}
+res <- mroast(mainz, indices, design)
+head(res)
+```
+
+## Mapping Probes to Genes
+
+To see the pathways we need a data matrix with ENTREZ Gene ID as the rowname
+
+```{r}
+x <- hgu133aENTREZID
+# Convert to a list
+xx <- as.list(x)
+entrezid <- sapply(rownames(fit.b), function(x) xx[x], USE.NAMES=FALSE)
+```
+
+## The `pathview` Package
+
+```{r}
+library(pathview)
+```
+
+## Building a Data Matrix
+
+```{r}
+gene.data <- fit.b$coefficients
+rownames(gene.data) <- entrezid
+```
+
+## Plotting the Pathway
+
+```{r}
+pv.out <- pathview(gene.data = gene.data, pathway.id = "04010", 
+                   species = "hsa", out.suffix = "dmvsclear", 
+                   kegg.native = T, same.layer = F, res = 72)
+```
+
+## Mapk Signalling
+
+![](hsa04010.dmvsclear.png)
+***
+Pathway and expression data
