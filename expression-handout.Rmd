@@ -90,7 +90,7 @@ stripchart(exprs(mainz)[row,] ~ mainz.fac, method="jitter")
 
 ## Plot all the genes
 
-Here's one of the 200 experiments.
+Here is an MA plot of all 22,000+ probes in the first of the 200 experiments compared against the average expression in all the experiments.
 
 ```{r}
 plotMA(mainz)
