@@ -2,7 +2,11 @@
 title: "Microarray data analysis using Bioconductor"
 author: "Humberto Ortiz-Zuazaga"
 date: "November 14, 2014"
-output: ioslides_presentation
+output: 
+  beamer_presentation:
+    includes:
+      in_header: mystyles.sty
+    keep_tex: yes
 ---
 
 ## Bioconductor Project
