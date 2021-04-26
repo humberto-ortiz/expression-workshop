@@ -1,18 +1,14 @@
 ---
 title: "Microarray data analysis using Bioconductor"
 author: "Humberto Ortiz-Zuazaga"
-date: "November 14, 2014"
-output: 
-  beamer_presentation:
-    includes:
-      in_header: mystyles.sty
-    keep_tex: yes
+date: "April 15, 2021"
+output: beamer_presentation
 ---
 
 ## Bioconductor Project
 
 - Bioconductor: <http://bioconductor.org/>
-- 900+ packages for biostatistics
+- 1900+ packages for biostatistics
 - Developed by top biostatistics researchers
 - Extensive documentation: emphasizes reproducible research
 
@@ -21,18 +17,18 @@ output:
 - Install R (I also recommend R Studio)
 - To install or upgrade bioconductor run:
 ```
-source("http://bioconductor.org/biocLite.R")
-biocLite()
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install()
 ```
  you only need to run these commands once, not every session.
  
 ## Installing Packages
 
-For this workshop we'll need several packages, not all are included in the basic bioconductor installation:
+For this workshop we'll need several packages, not all are included in the basic bioconductor installation. We can use the BiocManager to install new packages. For example, the Mainz breast cancer dataset:
 ```
-biocLite("limma")
-biocLite( "pathview")
-biocLite(c("breastCancerMAINZ", "hgu133a.db"))
+if (!requireNamespace("breastCancerMAINZ", quietly = TRUE))
+  BiocManager::install("breastCancerMAINZ")
 ```
 
 ## Loading Packages
@@ -89,6 +85,8 @@ stripchart(exprs(mainz)[row,] ~ mainz.fac, method="jitter")
 ## The `limma` Package
 
 ```{r}
+if (!requireNamespace("limma", quietly = TRUE))
+  BiocManager::install("limma")
 library(limma)
 ?limma
 ```
@@ -98,7 +96,7 @@ library(limma)
 Each array has 22,000+ genes.
 
 ```{r}
-plotMA(mainz)
+limma::plotMA(mainz)
 ```
 
 ## Fitting a Linear Model
@@ -119,7 +117,7 @@ fit.b <- eBayes(fit2)
 The plot of the fit object shows the size of the predicted effect on each gene.
 
 ```{r}
-plotMA(fit.b)
+limma::plotMA(fit.b)
 ```
 
 ## Volcano Plot
@@ -145,6 +143,16 @@ We can use bioconductor annotation packages to find information for the probes i
 ```{r}
 library(hgu133a.db)
 ```
+
+## Errors?
+
+(if the above gives errors, try the suggestion in https://support.bioconductor.org/p/9136239/#9136319)
+```
+BiocManager::install("remotes")
+library(remotes)
+remotes::install_version("RSQLite", version = "2.2.5")
+```
+and restart R.
 
 ## Data in `hgu133a.db`
 
@@ -208,3 +216,10 @@ pv.out <- pathview(gene.data = gene.data, pathway.id = "04010",
 ## Mapk Signalling
 
 ![](hsa04010.dmvsclear.png)
+
+## Session Info
+
+```{r}
+sessionInfo()
+```
+
