@@ -2,7 +2,7 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - r-base=3.6
+  - r-base
   - r-tidyverse
   - nano
   - bioconda-limma
