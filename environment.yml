@@ -5,4 +5,4 @@ dependencies:
   - r-base
   - r-tidyverse
   - nano
-  - bioconda-limma
+  - bioconductor-limma
