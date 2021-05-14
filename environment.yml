@@ -4,7 +4,10 @@ channels:
 dependencies:
   - r-base
   - r-tidyverse
+  - r-biocmanager
   - nano
   - bioconductor-breastcancermainz
   - bioconductor-biobase
   - bioconductor-limma
+  - bioconductor-pathview
+  - bioconductor-hgu133a.db
