@@ -1,0 +1,285 @@
+---
+title: "Using online expression data in Bioconductor"
+author: "Humberto Ortiz-Zuazaga"
+date: "4/30/2021"
+output: beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.12")
+
+if (!requireNamespace("GEOquery", quietly = TRUE))
+    install.packages("GEOquery")
+
+if (!requireNamespace("limma", quietly = TRUE))
+    install.packages("limma")
+
+if (!requireNamespace("recount3", quietly = TRUE))
+    install.packages("recount3")
+```
+
+## Paper
+
+Walsh LA, Alvarez MJ, Sabio EY, Reyngold M, Makarov V, Mukherjee S, Lee KW, Desrichard A, Turcan Ş, Dalin MG, Rajasekhar VK, Chen S, Vahdat LT, Califano A, Chan TA. An Integrated Systems Biology Approach Identifies TRIM25 as a Key Determinant of Breast Cancer Metastasis. Cell Rep. 2017 Aug 15;20(7):1623-1640. doi: 10.1016/j.celrep.2017.07.052. PMID: 28813674; PMCID: PMC5985663.
+
+## Data!
+
+At the very end of the paper it says:
+
+The accession numbers for the RNA-seq after TRIM25 knockdown in breast cancer cell lines, ChIP-seq in TNBC cell lines, and RIP-seq in TNBC cell lines data reported in this paper are GEO: GSE79589, GSE79588, and GSE79587, respectively. The accession number for the primary breast cancer and matched metastases microarray data reported in this paper is GEO: GSE57968.
+
+# Microarray data
+
+## Gene Expression Omnibus
+
+NCBI resource for gene expression data.
+
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE57968
+
+## GEO2R
+
+Many analisis can be done in browser selecting GEO2R
+
+1. sort Sample table by Source Name
+1. create primary and metastasis group
+1. assign rows to each group
+1. click analyze
+
+You can see the R script used to perform the analysis, save it, and alter it locally.
+
+## Preparing
+
+```{r}
+#   Differential expression analysis with limma
+library(GEOquery)
+library(limma)
+#library(umap)
+```
+
+## Loading
+
+```{r}
+# load series and platform data from GEO
+
+gset <- getGEO("GSE57968", GSEMatrix =TRUE, AnnotGPL=TRUE)
+if (length(gset) > 1) idx <- grep("GPL571", attr(gset, "names")) else idx <- 1
+gset <- gset[[idx]]
+```
+
+## Additional data
+
+```{r}
+# make proper column names to match toptable 
+fvarLabels(gset) <- make.names(fvarLabels(gset))
+
+# group membership for all samples
+gsms <- paste0("01010101010101010101010101010101010101010101010101",
+        "0101010101010101010101")
+sml <- strsplit(gsms, split="")[[1]]
+```
+
+## Design
+
+```{r}
+# assign samples to groups and set up design matrix
+gs <- factor(sml)
+groups <- make.names(c("primary","metastasis"))
+levels(gs) <- groups
+gset$group <- gs
+design <- model.matrix(~group + 0, gset)
+colnames(design) <- levels(gs)
+```
+
+## Making the fit
+
+```{r}
+fit <- lmFit(gset, design)  # fit linear model
+```
+
+## Choosing the contrasts
+
+```{r}
+# set up contrasts of interest and recalculate model coefficients
+cts <- paste(groups[1], groups[2], sep="-")
+cont.matrix <- makeContrasts(contrasts=cts, levels=design)
+fit2 <- contrasts.fit(fit, cont.matrix)
+```
+
+## Top table
+
+```{r}
+# compute statistics and table of top significant genes
+fit2 <- eBayes(fit2, 0.01)
+tT <- topTable(fit2, adjust="fdr", sort.by="B", number=10)
+# summarize test results as "up", "down" or "not expressed"
+dT <- decideTests(fit2, adjust.method="fdr", p.value=0.05)
+
+tT
+```
+
+## Volcanoplot
+
+```{r}
+# volcano plot (log P-value vs log fold change)
+colnames(fit2) # list contrast names
+ct <- 1        # choose contrast of interest
+volcanoplot(fit2, coef=ct, main=colnames(fit2)[ct], pch=20,
+  highlight=length(which(dT[,ct]!=0)), names=rep('+', nrow(fit2)))
+
+```
+
+## Raw Data
+
+GEO also stores raw data for many experiments
+
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE57968
+
+# RNASeq data
+
+## Recount3
+
+http://rna.recount.bio/
+
+## Loading
+
+See http://rna.recount.bio/docs/quick-access.html#quick-recount3
+
+```{r}
+## Load recount3 R package
+library("recount3")
+```
+
+## Projects
+
+```{r}
+## Find all available human projects
+human_projects <- available_projects()
+```
+
+## particular project
+
+```{r}
+## Find the project you are interested in,
+## here we use SRP072302 as an example
+proj_info <- subset(
+    human_projects,
+    project == "SRP072302" & project_type == "data_sources"
+)
+```
+
+## Load the data
+
+```{r}
+## Create a RangedSummarizedExperiment (RSE) object at the gene level
+rse_gene_SRP072302 <- create_rse(proj_info)
+```
+
+```{r}
+## One row per sample, one column per phenotype variable
+dim(colData(rse_gene_SRP072302))
+```
+
+```{r}
+colnames(colData(rse_gene_SRP072302))
+```
+
+
+## Load SRA table
+
+```{r}
+SraRunTable <- read.csv("SraRunTable.txt")
+```
+
+## Sort SRA table
+
+```{r}
+rse_gene <- rse_gene_SRP072302
+sra <- SraRunTable
+
+## Re-organize the SRA table based on the SRA Run IDs we have
+sra <- sra[match(colData(rse_gene)$external_id, sra$Run), ]
+
+## Append the variables of interest
+sra_vars <- c("Strain")
+colData(rse_gene) <- cbind(colData(rse_gene), strain = sra[, sra_vars])
+```
+
+## deseq2
+
+```{r}
+library(DESeq2)
+```
+
+```{r}
+dds <- DESeqDataSet(rse_gene, design = ~ strain)
+```
+
+
+# Raw RNASeq data
+
+## Finding the data
+
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE79589
+
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE79586
+
+https://www.ncbi.nlm.nih.gov/sra?term=SRP072302
+
+## SRA Tools
+
+https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=toolkit_doc
+
+On boqueron:
+
+```
+$ module load sratoolkit/2.10.4
+```
+
+## Some interesting Runs
+
+From the SraRunTable.txt
+
+SRR3290869
+SRR3290870
+SRR3290871
+SRR3290872
+SRR3290873
+SRR3290874
+
+## fastq-dump
+
+```
+$ fastq-dump -X 3 -Z SRR3290870
+Read 3 spots for SRR3290870
+Written 3 spots for SRR3290870
+@SRR3290870.1 1 length=100
+NATGAATTAAGTCATGGTACACATCTGCAAAATCTTCATCCCAGCTGGGTCTCTGACTCAGTTTATAGAAGAAGAATCCCTCAGCGATTATGATAGAGAT
++SRR3290870.1 1 length=100
+#33<AEBCGGDBGGEGC=E@GGCGFE>1BEGGFGEGGG>1C<C>FDGGG:CBCBB>GGGGGGCGCGDFCGGGGG1GD@CFCGGGGCEGGGGGGFGGDD>B
+@SRR3290870.2 2 length=100
+NGGAGTTTGAGACCAGCCTGGCCAACATGGTGAAACCTCATCTCTACTAAGACAAAGTCTTGCTCTTGTTCCCCAGGCTGAAGTGCAATGGCACAATCTC
++SRR3290870.2 2 length=100
+#<<ABGGGGGGGGGGGGGGGGGGGGGGGGGBGGGGGGGGGGGGGGGGGGGBCCC@GGGGGGGGGGGGGGGCDGGGGGGGGDGGGGGGGGGGGGGGGGGGG
+@SRR3290870.3 3 length=100
+NCGCAGGAAGCCTCCACCCCCACCCCTGCCTGGCAGGTCCCAGATTACATGGGTGGCAGCTTCGGGGACAATCTGGTCACCCGCTCCTACCTCCTGGGCA
++SRR3290870.3 3 length=100
+#<3<AECFF1CFGDGEGFGGGGGGGGGGGGG>GGE<GGGGGGGEGGGGGEB:?BBGEFG<F@GGDCGGAB0:CC@1EGFC>FGGG>9GEFGGGGGCFEGG
+```
+
+## Automating
+
+```
+$ for file in $(cat runs.txt) ; do fastq-dump -X 10 --split-files $file ; done
+Read 10 spots for SRR3290869
+Written 10 spots for SRR3290869
+Read 10 spots for SRR3290870
+Written 10 spots for SRR3290870
+2021-04-30T17:22:50 fastq-dump.2.10.4 err: timeout exhausted while creating file within network system module - error with https open 'https://sra-pub-run-odp.s3.amazonaws.com/sra/SRR3290871/SRR3290871'
+2021-04-30T17:22:50 fastq-dump.2.10.4 err: timeout exhausted while creating file within network system module - failed to open 'SRR3290871'
+fastq-dump (PID 28391) quit with error code 3
+```
+
