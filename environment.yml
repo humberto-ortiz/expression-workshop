@@ -5,6 +5,8 @@ dependencies:
   - r-base
   - r-tidyverse
   - r-biocmanager
+  - r-htmltools
+  - r-tinytex
   - nano
   - bioconductor-breastcancermainz
   - bioconductor-biobase
