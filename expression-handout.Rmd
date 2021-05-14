@@ -1,0 +1,207 @@
+---
+title: "Expression Workshop"
+author: "Humberto Ortiz-Zuazaga"
+date: "November 14, 2014"
+output: 
+  pdf_document
+---
+
+## Abstract
+
+The bioconductor project publishes software and data for the analysis of functional genomics experiments, using a variety of techniques such as microarrays or second-generation sequencing. We will explore the bioconductor tools for expression analysis and pathway analysis and apply them to a demo dataset.
+
+## Installing bioconductor
+
+Bioconductor comes with it's own installation procedures for software and data packages, the `BiocManager()` function. You can use it to install any bioconductor package, along with all prerequisites. For example, to install the `limma` package, we can use code like this:
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+check <- function(packageName) {
+  if (!requireNamespace(packageName, quietly = TRUE))
+    BiocManager::install(packageName)
+}
+
+check("limma")
+```
+
+Once you have sourced the biocLite file in your R session, you can continue to use it to install additional packages, such as the pathview package:
+
+```{r}
+check("pathview")
+```
+
+## Installing Data packages
+
+Bioconductor includes many experimental data packages as well, that can be installed with `biocLite()` function as well:
+
+```{r}
+check("breastCancerMAINZ")
+check("hgu133a.db")
+```
+
+## Loading packages
+
+Once packages have been installed, you need to load the package into each session that will use them. R-Studio will keep the packages loaded into a workspace, even if you exit and restart the program, as long as you save your workspace.
+
+```{r}
+library(Biobase)
+library(limma)
+library(breastCancerMAINZ)
+data(mainz)
+```
+
+
+## Getting help.
+
+bioconductor has extensive help available for almost all aspects.
+
+```{r}
+?mainz
+?ExpressionSet
+?limma
+```
+
+Of particular note, are the package vignettes, pdf files with tutorial examples of almost all packages.
+
+## Examining the mainz breast cancer experiment
+
+http://cancerres.aacrjournals.org/content/68/13/5405.abstract
+
+```{r}
+dim(mainz)
+colnames(pData(mainz))
+annotation(mainz)
+```
+
+## Plot some data from mainz
+
+I'll pick a row from the 22,000 probes in the arrays and plot the expression in each array for that gene.
+
+```{r}
+row = 21399
+plot(exprs(mainz)[row,])
+```
+
+Let's divide the arrays into two groups, patients that developed distant metastases within 5 years of diagnosis and those that did not. We can then examine the expression of the selected gene in these groups.
+
+```{r}
+mainz.class <- (pData(mainz)$e.dmfs & pData(mainz)$t.dmfs < 5*365)
+mainz.fac <- factor(mainz.class, labels= c("CLEAR","DM"))
+stripchart(exprs(mainz)[row,] ~ mainz.fac, method="jitter")
+```
+
+## Plot all the genes
+
+Here is an MA plot of all 22,000+ probes in the first of the 200 experiments compared against the average expression in all the experiments.
+
+```{r}
+plotMA(mainz)
+```
+
+## Fitting a linear model
+
+Suppose we want to find genes that change expression between the cases that have distant metastases in under 5 years from those that don't. Instead of running t-tests on 22,000+ genes, we can fit a model to the data.
+
+The design matrix we use uses the factor we constructed above to divide the arrays into two groups. We can then construct a contrast matrix to compare expression in the patients with distant metastases to those that did not develop metastases.
+
+The `limma` User's Guide contains many case studies with different types of microarray experiments, it is very helpful when designing your own analyses.
+
+```{r}
+design <- model.matrix(~0 + mainz.fac)
+colnames(design) <- c("CLEAR", "DM")
+fit <- lmFit(exprs(mainz), design)
+cont.matrix <- makeContrasts(DMvsCLEAR = DM - CLEAR, levels = design)
+fit2 <- contrasts.fit(fit, cont.matrix)
+fit.b <- eBayes(fit2)
+```
+
+## Reporting the results
+
+The resulting `fit.b` object has the results of the linear model fit, and we can produce plots and table summarizing the evidence for differential expression between the conditions.
+
+The plot of the fit object shows the size of the predicted effect on each gene.
+
+```{r}
+plotMA(fit.b)
+```
+
+The volcanoplot shows the log odds of differential expression vs the log ratio of expression.
+
+```{r}
+volcanoplot(fit.b)
+```
+
+The topTable lists the genes ranked by the evidence of differential expression.
+
+```{r}
+topTable(fit.b, adjust = "BH")
+```
+
+## Mapping probe identifiers to external databases.
+
+We can use bioconductor annotation packages to find information for the probes in our dataset.
+
+```{r}
+library(hgu133a.db)
+ls("package:hgu133a.db")
+```
+
+The package contains mappings from affy probe ids to many different databases. We're interested in the KEGG pathways:
+
+```{r}
+x <- hgu133aPATH2PROBE
+# Get the probe identifiers that are mapped to a KEGG pathway
+mapped_probes <- mappedkeys(x)
+# Convert to a list
+xx <- as.list(x[mapped_probes])
+
+indices <- ids2indices(xx, rownames(mainz))
+```
+
+The `mroast` function tests sets of genes for coordinated changes in expression.
+
+We can run `mroast` to find KEGG pathways with differential expression.
+
+```{r}
+res <- mroast(mainz, indices, design)
+head(res)
+```
+
+To see the pathways we need a data matrix with ENTREZ Gene ID as the rowname
+
+```{r}
+x <- hgu133aENTREZID
+# Convert to a list
+xx <- as.list(x)
+entrezid <- sapply(rownames(fit.b), function(x) xx[x], USE.NAMES=FALSE)
+```
+
+Now we can plot the Kegg pathway and color the nodes by their fitted expression estimates.
+
+```{r}
+library(pathview)
+gene.data <- fit.b$coefficients
+rownames(gene.data) <- entrezid
+pv.out <- pathview(gene.data = gene.data, pathway.id = "04010", species = "hsa", 
+                   out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
+
+pv.out <- pathview(gene.data = gene.data, pathway.id = "05200", species = "hsa", 
+                   out.suffix = "dmvsclear", kegg.native = T, same.layer = F)
+
+```
+
+![](hsa04010.dmvsclear.png)
+![](hsa05200.dmvsclear.png)
+
+## Bibliography
+
+```{r}
+citation()
+citation("breastCancerMAINZ")
+citation("hgu133a.db")
+citation("Biobase")
+citation("limma")
+citation("pathview")
+```
