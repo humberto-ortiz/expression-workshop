@@ -3,10 +3,7 @@ title: "Expression Workshop"
 author: "Humberto Ortiz-Zuazaga"
 date: "November 14, 2014"
 output: 
-  pdf_document:
-    includes:
-      in_header: mystyles.sty
-    keep_tex: yes
+  pdf_document
 ---
 
 ## Abstract
@@ -17,25 +14,31 @@ The bioconductor project publishes software and data for the analysis of functio
 
 Bioconductor comes with it's own installation procedures for software and data packages, the `BiocManager::install()` function. You can use it to install any bioconductor package, along with all prerequisites. For example, to install the `limma` package, we can use code like this:
 
-```
-if (!require("BiocManager", quietly = TRUE))
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install("limma")
+
+check <- function(packageName) {
+  if (!requireNamespace(packageName, quietly = TRUE))
+    BiocManager::install(packageName)
+}
+
+check("limma")
 ```
 
 Once you have sourced the BiocManager file in your R session, you can continue to use it to install additional packages, such as the pathview package:
 
-```
-BiocManager::install("pathview")
+```{r}
+check("pathview")
 ```
 
 ## Installing Data packages
 
 Bioconductor includes many experimental data packages as well, that can be installed with `BiocManager::install()` function as well:
 
-```
-BiocManager::install("breastCancerMAINZ")
-BiocManager::install("hgu133a.db")
+```{r}
+check("breastCancerMAINZ")
+check("hgu133a.db")
 ```
 
 ## Loading packages
