@@ -15,26 +15,27 @@ The bioconductor project publishes software and data for the analysis of functio
 
 ## Installing bioconductor
 
-Bioconductor comes with it's own installation procedures for software and data packages, the `biocLite()` function. You can use it to install any bioconductor package, along with all prerequisites. For example, to install the `limma` package, we can use code like this:
+Bioconductor comes with it's own installation procedures for software and data packages, the `BiocManager::install()` function. You can use it to install any bioconductor package, along with all prerequisites. For example, to install the `limma` package, we can use code like this:
 
 ```
-source("http://bioconductor.org/biocLite.R")
-biocLite("limma")
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("limma")
 ```
 
-Once you have sourced the biocLite file in your R session, you can continue to use it to install additional packages, such as the pathview package:
+Once you have sourced the BiocManager file in your R session, you can continue to use it to install additional packages, such as the pathview package:
 
 ```
-biocLite("pathview")
+BiocManager::install("pathview")
 ```
 
 ## Installing Data packages
 
-Bioconductor includes many experimental data packages as well, that can be installed with `biocLite()` function as well:
+Bioconductor includes many experimental data packages as well, that can be installed with `BiocManager::install()` function as well:
 
 ```
-biocLite("breastCancerMAINZ")
-biocLite("hgu133a.db")
+BiocManager::install("breastCancerMAINZ")
+BiocManager::install("hgu133a.db")
 ```
 
 ## Loading packages
